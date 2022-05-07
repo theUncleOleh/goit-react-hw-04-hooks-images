@@ -1,216 +1,259 @@
-import React, { Component } from 'react';
- import { ToastContainer } from 'react-toastify';
- import Loader from './Loader';
- import { AiOutlineCloseCircle } from 'react-icons/ai';
- // import 'react-loader-spinner/dist/loader/css/react-spinner-loader.css';
- import 'react-toastify/dist/ReactToastify.css';
- import s from './App.module.css';
- import SearchBar from './SearchBar';
- import ImageGallery from './ImageGallery';
- import NotificationMessage from './NotificationMesage';
- import Modal from './Modal';
- import Button from './Button';
- import ErrorMessage from './ErrorMessage';
- import axiosApi from '../services/services-api';
- class App extends Component {
-   state = {
-     searchQuery: null,
-     pictures: [],
-     loading: false,
-     error: null,
-     status: 'idle',
-     largeImageURL: '',
-     page: 1,
-   };
+import { useState, useEffect, useRef } from 'react';
+import { ToastContainer } from 'react-toastify';
+import Loader from './Loader';
+import { AiOutlineCloseCircle } from 'react-icons/ai';
+// import 'react-loader-spinner/dist/loader/css/react-spinner-loader.css';
+import 'react-toastify/dist/ReactToastify.css';
+import s from './App.module.css';
+import SearchBar from './SearchBar';
+import ImageGallery from './ImageGallery';
+import NotificationMessage from './NotificationMesage';
+import Modal from './Modal';
+import Button from './Button';
+import ErrorMessage from './ErrorMessage';
+import axiosApi from '../services/services-api';
+export default function App() {
+  const [searchQuery, setSearchQuery] = useState(null);
+  const [pictures, setPictures] = useState([]);
+  // const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [status, setStatus] = useState('idle');
+  const [largeImageURL, setLargeImageURL] = useState('');
+  const [page, setPage] = useState(1);
+  const firstRender = useRef(true);
 
-   handleFormSubmit = query => {
-     // console.log(image);
-     this.setState({ searchQuery: query, page: 1 });
-   };
+  const handleFormSubmit = query => {
+    // console.log(image);
+    setSearchQuery(query, page);
+  };
 
-   onImageClick = largeImageURL => {
-     this.setState({
-       largeImageURL,
-     });
-     // console.log(largeImageURL);
-   };
+  const onImageClick = largeImageURL => {
+    setLargeImageURL(largeImageURL);
+    // console.log(largeImageURL);
+  };
+  const modalClose = () => {
+    setLargeImageURL('');
+  };
+  const handleLoadButtonClick = () => {
+    console.log('click the button', this.state.page);
 
-   modalClose = () => {
-     this.setState({
-       largeImageURL: '',
-     });
-   };
+    setPage(prevState => prevState + 1);
+  };
 
-   handleLoadButtonClick = () => {
-     console.log('click the button', this.state.page);
+  useEffect(() => {
+    if (firstRender.current) {
+      console.log(firstRender);
+      firstRender.current = false;
+      console.log(firstRender);
+      return;
+    }
 
-     this.setState(prevState => {
-       return { page: prevState.page + 1 };
-     });
-   };
+    // if (searchQuery === '') {
+    //   return;
+    // }
 
-   async componentDidUpdate(prevProps, prevState) {
-     console.log('before', prevState.searchQuery);
-     console.log('after', this.state.searchQuery);
-     if (prevState.searchQuery !== this.state.searchQuery) {
-       this.setState({ status: 'pending', pictures: [] });
-       this.fetchImages();
-     }
-     // await axios
-     //   .get(
-     //     `?q=${newImage}&page=1&key=24437827-e20f686b1c65a4a2859f17630&image_type=photo&orientation=horizontal&per_page=12`
-     //   )
-     // servicesApi
-     //   .axiosApi(newImage, this.state.page)
-     //   .then(response =>
-     //     this.setState({ pictures: response.data.hits, status: 'resolved' })
-     //   )
-     //   .catch(error => {
-     //     this.setState({ error, status: 'rejected' });
-     //   });
+    async function fetchImage() {
+      try {
+        const data = await axiosApi({ searchQuery, page });
+        setPictures(state => [...state, ...data]);
+        setStatus('resolved');
 
-     // if (newPage === 1) {
-     //   this.setState({ status: 'pending' });
-     //   servicesApi
-     //     .axiosApi(newImage, newPage)
-     //     .then(response =>
-     //       this.setState({ pictures: response.data.hits, status: 'resolved' })
-     //     )
-     //     .catch(error => {
-     //       this.setState({ error, status: 'rejected' });
-     //     });
-     // }
-     if (prevState.page !== this.state.page) {
-       this.fetchImages();
-     }
+        // this.setState(prevState => ({
+        //   pictures: [...prevState.pictures, ...data],
+        //   status: 'resolved',
+        //   newPage: data.length,
+        // }));
+      } catch (error) {
+        setError(error);
+        setStatus('rejected');
+      }
+    }
+    setStatus('pending');
+    setPictures([]);
+    fetchImage();
+  }, [searchQuery, page]);
 
-     //   if (prevPage !== newPage) {
-     //     this.setState({ status: 'pending' });
-     //     servicesApi
-     //       .axiosApi(newImage, newPage)
-     //       .then(response =>
-     //         this.setState(state => ({
-     //           pictures: [...state.pictures, ...response.data.hits],
-     //           status: 'resolved',
-     //         }))
-     //       )
-     //       .catch(error => {
-     //         this.setState({ error, status: 'rejected' });
-     //       });
-     //   }
-     // }
-   }
-   fetchImages = async () => {
-     const { searchQuery, page } = this.state;
+  const totalPictures = pictures.length;
+  if (status === 'idle') {
+    return (
+      <div>
+        <SearchBar onSubmit={handleFormSubmit} />
+        <NotificationMessage />
+        <ToastContainer position="top-right" autoClose={5000} />
+      </div>
+    );
+  }
 
-     try {
-       const data = await axiosApi({ searchQuery, page });
+  if (status === 'pending') {
+    return <Loader />;
+  }
 
-       this.setState(prevState => ({
-         pictures: [...prevState.pictures, ...data],
-         status: 'resolved',
-         newPage: data.length,
-       }));
-     } catch (error) {
-       this.setState({ error, status: 'rejected' });
-     }
-   };
+  if (status === 'rejected') {
+    return <ErrorMessage message={error.message} />;
+  }
 
-   // componentDidUpdate(prevProps, prevState) {
-   //   const prevImage = prevState.image;
-   //   const newImage = this.state.image;
-   //   if (prevImage !== newImage) {
-   //     console.log('new picture');
-   //     // this.setState({ loading: true, pictures: [] });
-   //     this.setState({ status: 'pending' });
+  if (status === 'resolved') {
+    return (
+      <div className={s.app}>
+        <SearchBar onSubmit={handleFormSubmit} />
+        <ImageGallery pictures={pictures} onClick={onImageClick} />
+        {totalPictures > 0 && totalPictures >= 12 && (
+          <Button onClick={handleLoadButtonClick} />
+        )}
+        {largeImageURL.length > 0 && (
+          <Modal onClose={modalClose}>
+            <button
+              type="button"
+              className={s.buttonModal}
+              onClick={modalClose}
+            >
+              <AiOutlineCloseCircle />
+            </button>
+            <img src={largeImageURL} alt="" width="100%" height="100%" />
+          </Modal>
+        )}
+      </div>
+    );
+  }
+}
 
-   //     fetch(
-   //       `https://pixabay.com/api/?q=${newImage}&page=1&key=24437827-e20f686b1c65a4a2859f17630&image_type=photo&orientation=horizontal&per_page=12`
-   //     )
-   //       .then(response => {
-   //         if (response.ok) {
-   //           return response.json();
-   //         }
-   //         return Promise.reject(new Error('Картинки с таким названием нет'));
-   //       })
-   //       .then(data =>
-   //         this.setState({ pictures: data.hits, status: 'resolved' })
-   //       )
-   //       .catch(error => this.setState({ error, status: 'rejected' }));
-   //     // .finally(this.setState({ loading: false }));
-   //   }
-   // }
+//  class App extends Component {
+//    state = {
+//      searchQuery: null,
+//      pictures: [],
+//      loading: false,
+//      error: null,
+//      status: 'idle',
+//      largeImageURL: '',
+//      page: 1,
+//    };
 
-   render() {
-     const { error, pictures, status, largeImageURL } = this.state;
+//    handleFormSubmit = query => {
+//      // console.log(image);
+//      this.setState({ searchQuery: query, page: 1 });
+//    };
 
-     if (status === 'idle') {
-       return (
-         <div>
-           <SearchBar onSubmit={this.handleFormSubmit} />
-           <NotificationMessage />
-           <ToastContainer position="top-right" autoClose={5000} />
-         </div>
-       );
-     }
+// onImageClick = largeImageURL => {
+//   this.setState({
+//     largeImageURL,
+//   });
+//   // console.log(largeImageURL);
+// };
 
-     if (status === 'pending') {
-       return <Loader />;
-     }
+// modalClose = () => {
+//   this.setState({
+//     largeImageURL: '',
+//   });
+// };
 
-     if (status === 'rejected') {
-       return <ErrorMessage message={error.message} />;
-     }
+// handleLoadButtonClick = () => {
+//   console.log('click the button', this.state.page);
 
-     if (status === 'resolved') {
-       return (
-         <div className={s.app}>
-           <SearchBar onSubmit={this.handleFormSubmit} />
-           <ImageGallery pictures={pictures} onClick={this.onImageClick} />
-           {pictures && <Button onClick={this.handleLoadButtonClick} />}
-           {largeImageURL.length > 0 && (
-             <Modal onClose={this.modalClose}>
-               <button
-                 type="button"
-                 className={s.buttonModal}
-                 onClick={this.modalClose}
-               >
-                 <AiOutlineCloseCircle />
-               </button>
-               <img
-                 src={this.state.largeImageURL}
-                 alt=""
-                 width="100%"
-                 height="100%"
-               />
-             </Modal>
-           )}
-         </div>
-       );
-     }
-     // return (
-     //   <div className={s.app}>
-     //     {!image && <div>tell me what you want</div>}
-     //     {error && <h2>{error.message}</h2>}
-     //     {loading && <div>Loading......</div>}
-     //     <SearchBar onSubmit={this.handleFormSubmit} />
-     //     <ImageGallery pictures={pictures} />
-     //     {pictures && <button className={s.button}>Load more</button>}
+//   this.setState(prevState => {
+//     return { page: prevState.page + 1 };
+//   });
+// };
 
-     //     <ToastContainer
-     //       position="top-right"
-     //       autoClose={5000}
-     //       hideProgressBar={false}
-     //       newestOnTop={false}
-     //       closeOnClick
-     //       rtl={false}
-     //       pauseOnFocusLoss
-     //       draggable
-     //       pauseOnHover
-     //     />
-     //   </div>
-     // );
-   }
- }
+//    async componentDidUpdate(prevProps, prevState) {
+//      console.log('before', prevState.searchQuery);
+//      console.log('after', this.state.searchQuery);
+//      if (prevState.searchQuery !== this.state.searchQuery) {
+//        this.setState({ status: 'pending', pictures: [] });
+//        this.fetchImages();
+//      }
 
-export default App;
+//      if (prevState.page !== this.state.page) {
+//        this.fetchImages();
+//      }
+//    }
+// fetchImages = async () => {
+//   const { searchQuery, page } = this.state;
+
+//   try {
+//     const data = await axiosApi({ searchQuery, page });
+
+//     this.setState(prevState => ({
+//       pictures: [...prevState.pictures, ...data],
+//       status: 'resolved',
+//       newPage: data.length,
+//     }));
+//   } catch (error) {
+//     this.setState({ error, status: 'rejected' });
+//   }
+// };
+
+//  render() {
+//    const { error, pictures, status, largeImageURL } = this.state;
+//    const totalPictures = pictures.length;
+//    if (status === 'idle') {
+//      return (
+//        <div>
+//          <SearchBar onSubmit={this.handleFormSubmit} />
+//          <NotificationMessage />
+//          <ToastContainer position="top-right" autoClose={5000} />
+//        </div>
+//      );
+//    }
+
+//    if (status === 'pending') {
+//      return <Loader />;
+//    }
+
+//    if (status === 'rejected') {
+//      return <ErrorMessage message={error.message} />;
+//    }
+
+//    if (status === 'resolved') {
+//      return (
+//        <div className={s.app}>
+//          <SearchBar onSubmit={this.handleFormSubmit} />
+//          <ImageGallery pictures={pictures} onClick={this.onImageClick} />
+//          {totalPictures > 0 && totalPictures >= 12 && (
+//            <Button onClick={this.handleLoadButtonClick} />
+//          )}
+//          {largeImageURL.length > 0 && (
+//            <Modal onClose={this.modalClose}>
+//              <button
+//                type="button"
+//                className={s.buttonModal}
+//                onClick={this.modalClose}
+//              >
+//                <AiOutlineCloseCircle />
+//              </button>
+//              <img
+//                src={this.state.largeImageURL}
+//                alt=""
+//                width="100%"
+//                height="100%"
+//              />
+//            </Modal>
+//          )}
+//        </div>
+//      );
+//      }
+//      // return (
+//      //   <div className={s.app}>
+//      //     {!image && <div>tell me what you want</div>}
+//      //     {error && <h2>{error.message}</h2>}
+//      //     {loading && <div>Loading......</div>}
+//      //     <SearchBar onSubmit={this.handleFormSubmit} />
+//      //     <ImageGallery pictures={pictures} />
+//      //     {pictures && <button className={s.button}>Load more</button>}
+
+//      //     <ToastContainer
+//      //       position="top-right"
+//      //       autoClose={5000}
+//      //       hideProgressBar={false}
+//      //       newestOnTop={false}
+//      //       closeOnClick
+//      //       rtl={false}
+//      //       pauseOnFocusLoss
+//      //       draggable
+//      //       pauseOnHover
+//      //     />
+//      //   </div>
+//      // );
+//    }
+//  }
+
+// export default App;
