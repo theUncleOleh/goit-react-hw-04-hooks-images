@@ -18,7 +18,7 @@ export default function SearchBar({ onSubmit }) {
     }
 
     onSubmit(searchQuery);
-    setSearchQuery({ searchQuery: '' });
+    setSearchQuery('');
   };
 
   return (

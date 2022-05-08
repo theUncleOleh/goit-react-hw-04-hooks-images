@@ -12,32 +12,38 @@ import Modal from './Modal';
 import Button from './Button';
 import ErrorMessage from './ErrorMessage';
 import axiosApi from '../services/services-api';
+
+const Status = {
+  IDLE: 'idle',
+  PENDING: 'pending',
+  RESOLVED: 'resolved',
+  REJECTED: 'regected',
+};
 export default function App() {
   const [searchQuery, setSearchQuery] = useState(null);
   const [pictures, setPictures] = useState([]);
-  // const [loading, setLoading] = useState(false);
+  const [totalPages, setTotalPages] = useState(null);
   const [error, setError] = useState(null);
-  const [status, setStatus] = useState('idle');
+  const [status, setStatus] = useState(Status.IDLE);
   const [largeImageURL, setLargeImageURL] = useState('');
   const [page, setPage] = useState(1);
+  const perPage = 12;
+  console.log(perPage);
   const firstRender = useRef(true);
 
   const handleFormSubmit = query => {
-    // console.log(image);
-    setSearchQuery(query, page);
+    setSearchQuery(query);
+    setPage(1);
+    setPictures([]);
+    console.log(query);
   };
 
   const onImageClick = largeImageURL => {
     setLargeImageURL(largeImageURL);
-    // console.log(largeImageURL);
+    console.log(largeImageURL);
   };
   const modalClose = () => {
     setLargeImageURL('');
-  };
-  const handleLoadButtonClick = () => {
-    console.log('click the button', this.state.page);
-
-    setPage(prevState => prevState + 1);
   };
 
   useEffect(() => {
@@ -48,33 +54,30 @@ export default function App() {
       return;
     }
 
-    // if (searchQuery === '') {
-    //   return;
-    // }
-
     async function fetchImage() {
       try {
-        const data = await axiosApi({ searchQuery, page });
-        setPictures(state => [...state, ...data]);
-        setStatus('resolved');
+        await axiosApi({ searchQuery, page }).then(data => {
+          setPictures(prevPictures => [...prevPictures, ...data.hits]);
 
-        // this.setState(prevState => ({
-        //   pictures: [...prevState.pictures, ...data],
-        //   status: 'resolved',
-        //   newPage: data.length,
-        // }));
+          // setTotalPages(Math.ceil(data.totalHits / perPage));
+        });
+
+        setStatus(Status.RESOLVED);
       } catch (error) {
         setError(error);
-        setStatus('rejected');
+        setStatus(Status.REJECTED);
       }
     }
-    setStatus('pending');
-    setPictures([]);
-    fetchImage();
-  }, [searchQuery, page]);
 
+    fetchImage();
+  }, [page, searchQuery]);
+
+  const updatePage = () => {
+    console.log('click the button', page);
+    setPage(prevPage => prevPage + 1);
+  };
   const totalPictures = pictures.length;
-  if (status === 'idle') {
+  if (status === Status.IDLE) {
     return (
       <div>
         <SearchBar onSubmit={handleFormSubmit} />
@@ -84,22 +87,20 @@ export default function App() {
     );
   }
 
-  if (status === 'pending') {
+  if (status === Status.PENDING) {
     return <Loader />;
   }
 
-  if (status === 'rejected') {
+  if (status === Status.REJECTED) {
     return <ErrorMessage message={error.message} />;
   }
 
-  if (status === 'resolved') {
+  if (status === Status.RESOLVED) {
     return (
       <div className={s.app}>
         <SearchBar onSubmit={handleFormSubmit} />
         <ImageGallery pictures={pictures} onClick={onImageClick} />
-        {totalPictures > 0 && totalPictures >= 12 && (
-          <Button onClick={handleLoadButtonClick} />
-        )}
+        {totalPictures > 0 && <Button onClick={updatePage} />}
         {largeImageURL.length > 0 && (
           <Modal onClose={modalClose}>
             <button
