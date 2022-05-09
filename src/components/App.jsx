@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { ToastContainer } from 'react-toastify';
 import Loader from './Loader';
 import { AiOutlineCloseCircle } from 'react-icons/ai';
@@ -27,9 +27,6 @@ export default function App() {
   const [status, setStatus] = useState(Status.IDLE);
   const [largeImageURL, setLargeImageURL] = useState('');
   const [page, setPage] = useState(1);
-  const perPage = 12;
-  console.log(perPage);
-  const firstRender = useRef(true);
 
   const handleFormSubmit = query => {
     setSearchQuery(query);
@@ -47,10 +44,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (firstRender.current) {
-      console.log(firstRender);
-      firstRender.current = false;
-      console.log(firstRender);
+    if (!searchQuery) {
       return;
     }
 
@@ -58,10 +52,8 @@ export default function App() {
       try {
         await axiosApi({ searchQuery, page }).then(data => {
           setPictures(prevPictures => [...prevPictures, ...data.hits]);
-
-          // setTotalPages(Math.ceil(data.totalHits / perPage));
+          setTotalPages(data.totalHits);
         });
-
         setStatus(Status.RESOLVED);
       } catch (error) {
         setError(error);
@@ -100,7 +92,9 @@ export default function App() {
       <div className={s.app}>
         <SearchBar onSubmit={handleFormSubmit} />
         <ImageGallery pictures={pictures} onClick={onImageClick} />
-        {totalPictures > 0 && <Button onClick={updatePage} />}
+        {totalPictures > 0 && totalPictures < totalPages && (
+          <Button onClick={updatePage} />
+        )}
         {largeImageURL.length > 0 && (
           <Modal onClose={modalClose}>
             <button
